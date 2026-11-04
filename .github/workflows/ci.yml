@@ -19,6 +19,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: false  # no dependencies to cache
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: SKILL.md frontmatter
