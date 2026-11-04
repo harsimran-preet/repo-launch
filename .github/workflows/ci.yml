@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       # setup-uv downloads any CPython, including versions the runner image no longer ships
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Unit tests
