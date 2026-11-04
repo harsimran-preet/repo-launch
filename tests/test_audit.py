@@ -104,6 +104,40 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(r["status"], "pass")
         self.assertIn("tests/test_x.py", r["evidence"])
 
+    def test_bot_only_comments_do_not_count_as_a_reply(self):
+        class FakeGH:
+            ok = True
+            repo = {"nameWithOwner": "owner/repo"}
+
+            def json(self, args):
+                from datetime import datetime, timedelta, timezone
+
+                old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+                return [{"number": 1, "title": "x", "createdAt": old,
+                         "author": {"login": "reporter"},
+                         "comments": [{"author": {"login": "github-actions[bot]", "is_bot": True}}]}]
+
+        r = audit.check_replies(FakeGH())
+        self.assertEqual(r["status"], "fail")
+        self.assertIn("#1", r["evidence"])
+
+    def test_human_reply_counts_even_with_bot_comments(self):
+        class FakeGH:
+            ok = True
+            repo = {"nameWithOwner": "owner/repo"}
+
+            def json(self, args):
+                from datetime import datetime, timedelta, timezone
+
+                old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+                return [{"number": 1, "title": "x", "createdAt": old,
+                         "author": {"login": "reporter"},
+                         "comments": [{"author": {"login": "github-actions[bot]", "is_bot": True}},
+                                      {"author": {"login": "owner"}}]}]
+
+        r = audit.check_replies(FakeGH())
+        self.assertEqual(r["status"], "pass")
+
     def test_env_files_in_test_dirs_do_not_fail(self):
         d = make_repo({"README.md": GOOD_README, "tests/fixtures/.env": "A=1\n", ".env.example": "A=\n"})
         r = audit.check_secrets(d)
