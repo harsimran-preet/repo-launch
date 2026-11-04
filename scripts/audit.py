@@ -369,7 +369,39 @@ def check_show_hn(root: Path) -> dict:
                   "" if draft.exists() else "write .launch/show-hn.md (title, URL, first comment)")
 
 
+def _comment_author(comment) -> tuple[str, bool]:
+    """Return (login, is_bot) for one issue comment, in any shape gh gives."""
+    author = (comment or {}).get("author") if isinstance(comment, dict) else None
+    if isinstance(author, str):
+        login = author
+        is_bot = login.lower().endswith("[bot]")
+    elif isinstance(author, dict):
+        login = str(author.get("login") or "")
+        is_bot = bool(author.get("is_bot")) or author.get("type") == "Bot" or author.get("__typename") == "Bot"
+        is_bot = is_bot or login.lower().endswith("[bot]")
+    else:
+        login, is_bot = "", False
+    return login.lower(), is_bot
+
+
+def is_a_reply(comment, issue_author: str, owner: str = "") -> bool:
+    """True only for a human reply to an issue.
+
+    Bot comments do not count as a reply, and neither does a comment
+    from the issue's own author: a bot-only thread is still waiting
+    for a first human answer.
+    """
+    login, is_bot = _comment_author(comment)
+    return bool(login) and not is_bot and login != issue_author.lower() and login != ""
+
+
 def check_replies(gh: GitHub) -> dict:
+    """Check item 16: every issue answered within a day.
+
+    An issue counts as answered only when it has a human reply: a
+    comment from a bot, or from the issue's own author, does not
+    count, so an issue whose comments are bot-only is still waiting.
+    """
     if not gh.ok:
         return result(16, "Every issue answered within a day", UNKNOWN, gh.reason)
     owner = gh.repo["nameWithOwner"].split("/")[0].lower()
@@ -381,7 +413,9 @@ def check_replies(gh: GitHub) -> dict:
         created = datetime.fromisoformat(i["createdAt"].replace("Z", "+00:00"))
         author = ((i.get("author") or {}).get("login") or "").lower()
         is_bot = (i.get("author") or {}).get("is_bot") or author.endswith("[bot]")
-        if created < cutoff and author != owner and not is_bot and len(i.get("comments") or []) == 0:
+        comments = i.get("comments") or []
+        replied = any(is_a_reply(c, author, owner) for c in comments) if isinstance(comments, list) else len(comments) > 0
+        if created < cutoff and author != owner and not is_bot and not replied:
             waiting.append(f"#{i['number']} ({(datetime.now(timezone.utc) - created).days}d)")
     if waiting:
         return result(16, "Every issue answered within a day", FAIL,
