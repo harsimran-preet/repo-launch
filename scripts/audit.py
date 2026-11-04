@@ -280,10 +280,21 @@ def check_secrets(root: Path) -> dict:
         tool = "built-in patterns"
         rc, log = run(["git", "log", "--all", "-p", "--no-color", "-U0", "--no-ext-diff"], root, 300)
         if rc == 0:
-            for name, pat in SECRET_PATTERNS.items():
-                for m in re.finditer(pat, log):
-                    findings.append(f"{name}: {m.group(0)[:8]}… (in history)")
-                    break
+            hits: dict[str, str] = {}  # pattern name -> first file it was added in
+            current = ""
+            for line in log.splitlines():
+                if line.startswith("+++ "):
+                    current = line[6:] if line.startswith("+++ b/") else ""
+                    continue
+                if not line.startswith("+"):
+                    continue  # only lines a commit added
+                for name, pat in SECRET_PATTERNS.items():
+                    if re.search(pat, line):
+                        if FIXTURE_DIR_RE.search(current):
+                            fixtures.append(f"{name} in {current}")
+                        else:
+                            hits.setdefault(name, current)
+            findings += [f"{name}: in {path or 'history'}" for name, path in hits.items()]
     rc, names = run(["git", "log", "--all", "--diff-filter=A", "--name-only", "--format="], root, 120)
     if rc == 0:
         for f in sorted(set(names.split())):
@@ -295,7 +306,8 @@ def check_secrets(root: Path) -> dict:
     if findings:
         return result(9, "No secrets in git history", FAIL, f"[{tool}] " + "; ".join(findings[:8]),
                       "review hits; rotate real secrets FIRST, then git filter-repo (destructive, confirm)")
-    note = f"; {len(fixtures)} env/key file(s) under test/example dirs, glance at them: {fixtures[:3]}" if fixtures else ""
+    fixtures = sorted(set(fixtures))
+    note = f"; {len(fixtures)} key-like value(s)/file(s) under test/example dirs, glance at them: {fixtures[:3]}" if fixtures else ""
     return result(9, "No secrets in git history", PASS, f"[{tool}] no findings" + note)
 
 

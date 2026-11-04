@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Audit item 9: key-like strings added under test/fixture/example folders are listed for review instead of failing the check, matching how `.env` files there are handled.
+- CI installs Python through setup-uv, so Python 3.9 stays tested on Ubuntu 26.04 runners.
+
 ## [0.1.0] - 2026-11-04
 
 ### Added

@@ -91,11 +91,18 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(r["status"], "fail")
 
     def test_deleted_secret_still_found_in_history(self):
-        d = make_repo({"README.md": GOOD_README, ".env": "KEY=sk-proj-Q7fz2LmN8vR4tY6wX1aB3cD5eF\n"},
+        d = make_repo({"README.md": GOOD_README, ".env": "KEY=" + "sk-" + "proj-Q7fz2LmN8vR4tY6wX1aB3cD5eF\n"},
                       commits_then_delete=(".env",))
         r = audit.check_secrets(d)
         self.assertEqual(r["status"], "fail")
         self.assertIn(".env", r["evidence"])
+
+    def test_fake_keys_in_test_dirs_do_not_fail(self):
+        fake = "sk-" + "proj-" + "Q7fz2LmN8vR4tY6wX1aB3cD5eF"
+        d = make_repo({"README.md": GOOD_README, "tests/test_x.py": f"KEY = '{fake}'\n"})
+        r = audit.check_secrets(d)
+        self.assertEqual(r["status"], "pass")
+        self.assertIn("tests/test_x.py", r["evidence"])
 
     def test_env_files_in_test_dirs_do_not_fail(self):
         d = make_repo({"README.md": GOOD_README, "tests/fixtures/.env": "A=1\n", ".env.example": "A=\n"})
