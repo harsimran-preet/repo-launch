@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: SKILL.md frontmatter
+        run: |
+          python - <<'PY'
+          import re, sys
+          text = open("SKILL.md").read()
+          m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+          assert m, "SKILL.md has no frontmatter"
+          fm = m.group(1)
+          assert re.search(r"^name: repo-launch$", fm, re.M), "name missing"
+          assert re.search(r"^description: .{40,}", fm, re.M), "description missing"
+          print("frontmatter ok")
+          PY
+      - name: Audit this repo (smoke test)
+        run: python scripts/audit.py . --no-github

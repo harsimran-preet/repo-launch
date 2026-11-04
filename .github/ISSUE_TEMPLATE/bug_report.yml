@@ -1,0 +1,28 @@
+name: Bug report
+description: The skill or the audit did something wrong
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you asked for, what you expected, and what the skill or audit did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit output
+      description: Output of `python3 scripts/audit.py <your-repo> --json` for the item that is wrong, if relevant.
+      render: json
+  - type: input
+    id: repo
+    attributes:
+      label: Public repo it happened on (if any)
+  - type: input
+    id: env
+    attributes:
+      label: Versions
+      placeholder: "Claude Code 2.x, Python 3.12, gh 2.x, macOS 15"
+    validations:
+      required: true

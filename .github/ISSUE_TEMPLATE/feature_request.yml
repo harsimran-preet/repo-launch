@@ -1,0 +1,14 @@
+name: Feature request
+description: Suggest a new check, a better fix recipe, or a new launch channel
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help a launching repo with?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should the skill or audit do?
